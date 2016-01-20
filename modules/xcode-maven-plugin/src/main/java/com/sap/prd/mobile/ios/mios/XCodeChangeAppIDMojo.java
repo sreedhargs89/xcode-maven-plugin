@@ -104,7 +104,6 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
   private static String watchkitAppBundleIdentifier;
   
  
-
 /**
    * @parameter expression="${xcode.watchapp}"
    * For watchos2.0 we should not send the sdk value to xcodebuild, To differentiate between regular app and watch2.0 (Now it's specific)
@@ -207,47 +206,62 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
 				
         
 				if (!(appType == null || "".equals(appType.trim()))) {
-				    LOGGER.info("appType: " + appType + " value provided, needs to consider additional plist files for appIdSuffix injection");
+					LOGGER.info("appType: " + appType
+							+ " value provided, needs to consider additional plist files for appIdSuffix injection");
 
 					try {
-						srcRoot = getProjectRootDirectory(XCodeContext.SourceCodeLocation.WORKING_COPY, configuration,sdk);
-						
-						if(watchkitAppPlist != null || "".equals(watchkitAppPlist.trim())){
-							LOGGER.info("File path of watchkitApp Plist file \n watchkitAppPlist: "+watchkitAppPlist);
+						srcRoot = getProjectRootDirectory(XCodeContext.SourceCodeLocation.WORKING_COPY, configuration,
+								sdk);
+
+						if (watchkitAppPlist != null || "".equals(watchkitAppPlist.trim())) {
+							LOGGER.info("File path of watchkitApp Plist file \n watchkitAppPlist: " + watchkitAppPlist);
 							infoPlistFile = new File(srcRoot, watchkitAppPlist);
 							infoPlistAccessor = new PListAccessor(infoPlistFile);
 							if (alreadyUpdatedPlists.contains(infoPlistFile)) {
 								LOGGER.finer("PList file '" + infoPlistFile.getName()
 										+ "' was already updated for another configuration. This file will be skipped.");
-							} else 
-							changeAppId(infoPlistAccessor, appIdSuffix , appType);
-							try {
-								changeCompanionBundleId(infoPlistAccessor,getWKCompanionAppBundleIdentifier());
-								changeWatchAppBundleShortVersionString(infoPlistAccessor, getCFBundleShortVersionString());
-								changeWatchAppBundleVersion(infoPlistAccessor, getCFBundleVersion());
+							} else {
+								try {
+									changeAppId(infoPlistAccessor, appIdSuffix, appType);
 
-							} catch (IOException e) {
-								throw new MojoExecutionException(e.getMessage(), e);
+									changeCompanionBundleId(infoPlistAccessor, getWKCompanionAppBundleIdentifier());
+
+									changeWatchAppBundleShortVersionString(infoPlistAccessor,
+											getCFBundleShortVersionString());
+									changeWatchAppBundleVersion(infoPlistAccessor, getCFBundleVersion());
+
+								} catch (IOException e) {
+									throw new MojoExecutionException(e.getMessage(), e);
+								}
 							}
 
-							setWKAppBundleIdentifier(infoPlistAccessor.getStringValue(PListAccessor.KEY_BUNDLE_IDENTIFIER));
+							setWKAppBundleIdentifier(
+									infoPlistAccessor.getStringValue(PListAccessor.KEY_BUNDLE_IDENTIFIER));
 
 							alreadyUpdatedPlists.add(infoPlistFile);
 						}
-						
-						if(watchkitExtentionPlist != null || "".equals(watchkitExtentionPlist.trim())){
-							LOGGER.info("File path of watchkitAppExtention Plist file \n watchkitExtentionPlist: "+watchkitExtentionPlist);
+
+						if (watchkitExtentionPlist != null || "".equals(watchkitExtentionPlist.trim())) {
+							LOGGER.info("File path of watchkitAppExtention Plist file \n watchkitExtentionPlist: "
+									+ watchkitExtentionPlist);
 							infoPlistFile = new File(srcRoot, watchkitExtentionPlist);
 							infoPlistAccessor = new PListAccessor(infoPlistFile);
 							if (alreadyUpdatedPlists.contains(infoPlistFile)) {
 								LOGGER.finer("PList file '" + infoPlistFile.getName()
 										+ "' was already updated for another configuration. This file will be skipped.");
-							} else 
-							changeAppIdForExtension(infoPlistAccessor, appIdSuffix , appType);
-							changeWKAppBundleIdentifier(infoPlistAccessor, getWKAppBundleIdentifier());
-							alreadyUpdatedPlists.add(infoPlistFile);
+							} else {
+								changeAppIdForExtension(infoPlistAccessor, appIdSuffix, appType);
+
+								changeWKAppBundleIdentifier(infoPlistAccessor, getWKAppBundleIdentifier());
+
+								changeWatchAppBundleShortVersionString(infoPlistAccessor,
+										getCFBundleShortVersionString());
+								changeWatchAppBundleVersion(infoPlistAccessor, getCFBundleVersion());
+
+								alreadyUpdatedPlists.add(infoPlistFile);
+							}
 						}
-		
+
 					} catch (XCodeException e) {
 						e.printStackTrace();
 					} catch (IOException e) {
@@ -259,12 +273,13 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
   }
 
   private void changeAppIdForExtension(PListAccessor infoPlistAccessor, String Suffix, String appType) throws MojoExecutionException {
-
 	  ensurePListFileIsWritable(infoPlistAccessor.getPlistFile());
 	    try {
-	        LOGGER.info("###############");
-
-	    	infoPlistAccessor.updateStringValue(PListAccessor.KEY_BUNDLE_IDENTIFIER, getWKCompanionAppBundleIdentifier()+"."+"watchkitapp.intenal.watchkitextension");
+	    	LOGGER.info("Watchkit extension bundle ID is combination of WatchkitApp BI and extension string");
+			LOGGER.info("For current project: \n WatchApp BI: "+getWKAppBundleIdentifier());
+			String watchkitExtensionBI= getWKAppBundleIdentifier()+"."+appIdSuffix+".watchkitextension";
+			LOGGER.info("So watchkitExtention BI: "+watchkitExtensionBI);
+			infoPlistAccessor.updateStringValue(PListAccessor.KEY_BUNDLE_IDENTIFIER, watchkitExtensionBI);
 	    }
 	    catch (IOException e) {
 	      throw new MojoExecutionException(e.getMessage(), e);
@@ -406,5 +421,6 @@ static void changeAppId(PListAccessor infoPlistAccessor, String appIdSuffix, Str
 	public static void setWatchkitAppBundleIdentifier(String watchkitAppBundleIdentifier) {
 			XCodeChangeAppIDMojo.watchkitAppBundleIdentifier = watchkitAppBundleIdentifier;
 	}
+
 
 }
