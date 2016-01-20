@@ -74,15 +74,55 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
   private static String watchkitExtentionPlist;
 
   /**
-   * These are the various parameters we need to change for watchkit apps
+   * This is a variable in plist file of Watchkitapp
+   * This variable reference to the Bundle Identifier of the iphone app
    */
-  private static String WKCompanionAppBundleIdentifier;
+  private static String wkCompanionAppBundleIdentifier;
+  
 
-  private static String WKAppBundleIdentifier;
+  /**
+   * This is a variable in plist file of watchkitextention
+   * This variable reference to the Bundle Identifier of the Watchkitapp
+   */
+  private static String wkAppBundleIdentifier;
 
-  private static String CFBundleShortVersionString;
+  /**
+   * This is common variable in all the plist files, we need to make sure values are same in all plist files
+   */
+  private static String cfBundleShortVersionString;
 
-  private static String CFBundleVersion;
+  /**
+   * This is common variable in all the plist files, we need to make sure values are same in all plist files
+   */
+  private static String cfBundleVersion;
+  
+  /**
+   * This is a watchkit apps modified bundle identifier value, this needs to be extended for the watchkitextension bundle identifier
+   * Requirement for the watchos2.0 applications, without with build fails
+   */
+  
+  private static String watchkitAppBundleIdentifier;
+  
+ 
+
+/**
+   * @parameter expression="${xcode.watchapp}"
+   * For watchos2.0 we should not send the sdk value to xcodebuild, To differentiate between regular app and watch2.0 (Now it's specific)
+   * expecting this property from developer in pom.xml, on demand this will be considered.
+   *
+   * pom.xml entry:
+   *
+   * <pre>
+   * {@code
+   * <properties>
+   *  <xcode.watchapp>watchos2.0</xcode.watchapp>
+   * </properties>
+   * }
+   * </pre>
+   *
+   * @since 1.14.3
+   */
+  private String watchapp;
 
   
   @Override
@@ -176,6 +216,10 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
 							LOGGER.info("File path of watchkitApp Plist file \n watchkitAppPlist: "+watchkitAppPlist);
 							infoPlistFile = new File(srcRoot, watchkitAppPlist);
 							infoPlistAccessor = new PListAccessor(infoPlistFile);
+							if (alreadyUpdatedPlists.contains(infoPlistFile)) {
+								LOGGER.finer("PList file '" + infoPlistFile.getName()
+										+ "' was already updated for another configuration. This file will be skipped.");
+							} else 
 							changeAppId(infoPlistAccessor, appIdSuffix , appType);
 							try {
 								changeCompanionBundleId(infoPlistAccessor,getWKCompanionAppBundleIdentifier());
@@ -195,7 +239,11 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
 							LOGGER.info("File path of watchkitAppExtention Plist file \n watchkitExtentionPlist: "+watchkitExtentionPlist);
 							infoPlistFile = new File(srcRoot, watchkitExtentionPlist);
 							infoPlistAccessor = new PListAccessor(infoPlistFile);
-							changeAppId(infoPlistAccessor, appIdSuffix , appType);
+							if (alreadyUpdatedPlists.contains(infoPlistFile)) {
+								LOGGER.finer("PList file '" + infoPlistFile.getName()
+										+ "' was already updated for another configuration. This file will be skipped.");
+							} else 
+							changeAppIdForExtension(infoPlistAccessor, appIdSuffix , appType);
 							changeWKAppBundleIdentifier(infoPlistAccessor, getWKAppBundleIdentifier());
 							alreadyUpdatedPlists.add(infoPlistFile);
 						}
@@ -210,7 +258,21 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
     }
   }
 
-  static void changeAppId(PListAccessor infoPlistAccessor, String appIdSuffix, String appType) throws MojoExecutionException
+  private void changeAppIdForExtension(PListAccessor infoPlistAccessor, String Suffix, String appType) throws MojoExecutionException {
+
+	  ensurePListFileIsWritable(infoPlistAccessor.getPlistFile());
+	    try {
+	        LOGGER.info("###############");
+
+	    	infoPlistAccessor.updateStringValue(PListAccessor.KEY_BUNDLE_IDENTIFIER, getWKCompanionAppBundleIdentifier()+"."+"watchkitapp.intenal.watchkitextension");
+	    }
+	    catch (IOException e) {
+	      throw new MojoExecutionException(e.getMessage(), e);
+	    }
+	
+}
+
+static void changeAppId(PListAccessor infoPlistAccessor, String appIdSuffix, String appType) throws MojoExecutionException
   {
     ensurePListFileIsWritable(infoPlistAccessor.getPlistFile());
     try {
@@ -306,35 +368,43 @@ public class XCodeChangeAppIDMojo extends BuildContextAwareMojo
 	}
 
 	public static String getWKCompanionAppBundleIdentifier() {
-		return WKCompanionAppBundleIdentifier;
+		return wkCompanionAppBundleIdentifier;
 	}
 
 	public static void setWKCompanionAppBundleIdentifier(String wKCompanionAppBundleIdentifier) {
-		WKCompanionAppBundleIdentifier = wKCompanionAppBundleIdentifier;
+		wkCompanionAppBundleIdentifier = wKCompanionAppBundleIdentifier;
 	}
 
 	public static String getWKAppBundleIdentifier() {
-		return WKAppBundleIdentifier;
+		return wkAppBundleIdentifier;
 	}
 
 	public static void setWKAppBundleIdentifier(String wKAppBundleIdentifier) {
-		WKAppBundleIdentifier = wKAppBundleIdentifier;
+		wkAppBundleIdentifier = wKAppBundleIdentifier;
 	}
 
 	public static String getCFBundleShortVersionString() {
-		return CFBundleShortVersionString;
+		return cfBundleShortVersionString;
 	}
 
 	public static void setCFBundleShortVersionString(String cFBundleShortVersionString) {
-		CFBundleShortVersionString = cFBundleShortVersionString;
+		cfBundleShortVersionString = cFBundleShortVersionString;
 	}
 
 	public static String getCFBundleVersion() {
-		return CFBundleVersion;
+		return cfBundleVersion;
 	}
 
 	public static void setCFBundleVersion(String cFBundleVersion) {
-		CFBundleVersion = cFBundleVersion;
+		cfBundleVersion = cFBundleVersion;
+	}
+	
+	 public static String getWatchkitAppBundleIdentifier() {
+			return watchkitAppBundleIdentifier;
+	}
+
+	public static void setWatchkitAppBundleIdentifier(String watchkitAppBundleIdentifier) {
+			XCodeChangeAppIDMojo.watchkitAppBundleIdentifier = watchkitAppBundleIdentifier;
 	}
 
 }
